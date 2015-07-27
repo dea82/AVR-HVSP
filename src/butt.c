@@ -7,60 +7,84 @@
 #include <avr/interrupt.h>
 #include <avr/io.h>
 
+#include "butt.h"
 #include "conf.h"
+#include "ledc.h"
 #include "type.h"
 
-#define TICK 20 // [ms]
-#define TIMER_TICKS_TO_REACH_ISR 3
-#define TIMER_PRESCALER 8
-#define TIMER_INIT_VALUE (0xFFFF - (TICK*F_CPU/TIMER_PRESCALER/1000) + 1 + TIMER_TICKS_TO_REACH_ISR)
+#define NOF_BUTTONS 2
+
+#define FILTER_TIME 60 //[ms]
+
+static tButt_State_str buttState_astr[NOF_BUTTONS];
 
 void Butt_init(void)
 {
-    /* Activate internal pull-up */
-    CONF_IO(SELECT_BTN_CFG, INPUT, PULLUP);
-    CONF_IO(RESET_BTN_CFG, INPUT, PULLUP);
-
-	/* Initialize timer */
-	TCCR0B = _BV(CS11);
-	TCNT1 = TIMER_INIT_VALUE;
-	TIMSK = _BV(TOIE1);
-}
-
-
-void Butt_loop(void)
-{
+	/* Activate internal pull-up */
+	CONF_IO(BUTT_SELECT_CFG, INPUT, PULLUP);
+	CONF_IO(BUTT_RESET_CFG, INPUT, PULLUP);
 
 }
 
-ISR(TIMER1_OVF_vect)
+void Butt_update(void)
 {
-	/* How to figure out start value:
-	 * Number of clock cycles to reach interrupt is normally minimum 4 clock cycles:
-	 *
-		push	r1				#2
-		push	r0				#2
-		in	r0, 0x3f	; 63	#1
-		push	r0				#2
-		eor	r1, r1				#1
-		push	r24				#2
-		push	r25				#2
-		ldi	r24, 0xE0	; 224	#1
-		ldi	r25, 0xB1	; 177	#1
-		out	0x2d, r25	; 45	#1
-		out	0x2c, r24	; 44	#1
 
-	 Total: 4 + 16 = 20 clock cycles.
+	static tButt_State_str buttonRawOld_astr[NOF_BUTTONS];
 
-	 Timer prescaler  is 8 => ~3 timer ticks
+	tButt_State_E buttonRaw_aE[NOF_BUTTONS] =
+	{ (GET_STATUS(BUTT_SELECT_CFG) ? BUTT_RELEASED_E : BUTT_PRESSED_E), (
+	GET_STATUS(BUTT_RESET_CFG) ? BUTT_RELEASED_E : BUTT_PRESSED_E) };
+	tU08 i_U08;
+	for (i_U08 = 0; i_U08 < NOF_BUTTONS; i_U08++)
+	{
+		/* Is raw button glitching */
+		if (buttonRawOld_astr[i_U08].state_E == buttonRaw_aE[i_U08])
+		{
+			INC_U08(buttonRawOld_astr[i_U08].tickInState_U08);
+		}
+		else
+		{
+			buttonRawOld_astr[i_U08].tickInState_U08 = 0;
+		}
 
-
-
-	 */
-	TCNT1 = TIMER_INIT_VALUE;
+		/* Check if raw value is stable and different. */
+		if ((buttonRawOld_astr[i_U08].tickInState_U08 >= FILTER_TIME / TICK)
+				&& (buttState_astr[i_U08].state_E != buttonRaw_aE[i_U08]))
+		{
+			buttState_astr[i_U08].state_E = buttonRaw_aE[i_U08];
+			buttState_astr[i_U08].tickInState_U08 = 0;
+		}
+		else
+		{
+			INC_U08(buttState_astr[i_U08].tickInState_U08);
+		}
+		buttonRawOld_astr[i_U08].state_E = buttonRaw_aE[i_U08];
+	}
 }
 
-void Butt_sampleButton(tB sample_B)
+tB Butt_pressedFlank_B(tButt_Type_E type_E)
 {
+	tB ret_B = FALSE;
+	if ((buttState_astr[type_E].state_E == BUTT_PRESSED_E)
+			&& (buttState_astr[type_E].tickInState_U08 == 0))
+	{
+		ret_B = TRUE;
+	}
 
+	return ret_B;
+}
+
+tB Butt_pressed_B(tButt_Type_E type_E)
+{
+	tB ret_B = FALSE;
+	if (buttState_astr[type_E].state_E == BUTT_PRESSED_E)
+	{
+		ret_B = TRUE;
+	}
+	return ret_B;
+}
+
+tU08 Butt_getTickInState_U08(tButt_Type_E type_E)
+{
+	return buttState_astr[type_E].tickInState_U08;
 }

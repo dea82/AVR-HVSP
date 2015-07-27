@@ -64,4 +64,6 @@ typedef unsigned int  tU16;
 #define INC_U08(a) ((a) == MAX_U08 ? MAX_U08 : (a)++)
 #define INC_U16(a) ((a) == MAX_U16 ? MAX_U16 : (a)++)
 
+#define HI_NIBBLE(b) (((b) >> 4) & 0x0F)
+#define LO_NIBBLE(b) ((b) & 0x0F)
 #endif /* TYPE_H_ */

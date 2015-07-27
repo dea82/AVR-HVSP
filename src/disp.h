@@ -11,6 +11,6 @@
 #include "type.h"
 
 void Disp_init(void);
-void Disp_write(tU08* text);
+void Disp_write(char* text);
 
 #endif /* DISP_H_ */

@@ -121,7 +121,7 @@ void clear(void)
 	}
 }
 
-void Disp_write(tU08* text)
+void Disp_write(char* text)
 {
 	tU08 i_U08;
 	for (i_U08 = 0; i_U08 < NOF_DIGITS; i_U08++)
@@ -161,13 +161,13 @@ void Disp_write(tU08* text)
 		case 'A':
 			writeRegister(i_U08 + 1, LTR_A);
 			break;
-		case 'b':
+		case 'B':
 			writeRegister(i_U08 + 1, LTR_b);
 			break;
 		case 'C':
 			writeRegister(i_U08 + 1, LTR_C);
 			break;
-		case 'd':
+		case 'D':
 			writeRegister(i_U08 + 1, LTR_d);
 			break;
 		case 'E':
@@ -176,7 +176,7 @@ void Disp_write(tU08* text)
 		case 'F':
 			writeRegister(i_U08 + 1, LTR_F);
 			break;
-		case 't':
+		case 'T':
 			writeRegister(i_U08 + 1, LTR_t);
 			break;
 		case '-':
