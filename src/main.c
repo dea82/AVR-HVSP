@@ -33,16 +33,6 @@ typedef enum
 	ERR_UNKNOWN_DEVICE_E
 } tSelectState_E;
 
-typedef enum
-{
-	RESET_1SEC_E,
-	RESET_2SEC_E,
-	RESET_3SEC_E,
-	RESET_4SEC_E,
-	RESET_E,
-	RESET_DONE_E
-} tResetState_E;
-
 static void byteToDispString_pC(char * text_pC, tU08 byte_U08);
 
 volatile static tB tick_B;
