@@ -8,6 +8,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
+#include <avr/pgmspace.h>
 
 #include "butt.h"
 #include "coio.h"
@@ -23,10 +24,26 @@
 
 typedef enum
 {
-	INIT_E, DEVICE_E, LO_FUSE_E, HI_FUSE_E, EXT_FUSE_E, ERR_E
+	INIT_E,
+	DEVICE_E,
+	LO_FUSE_E,
+	HI_FUSE_E,
+	EXT_FUSE_E,
+	ERR_CONNECTION_FAIL_E,
+	ERR_UNKNOWN_DEVICE_E
 } tSelectState_E;
 
-static char * byteToDispString_pC(tU08 byte_U08);
+typedef enum
+{
+	RESET_1SEC_E,
+	RESET_2SEC_E,
+	RESET_3SEC_E,
+	RESET_4SEC_E,
+	RESET_E,
+	RESET_DONE_E
+} tResetState_E;
+
+static void byteToDispString_pC(char * text_pC, tU08 byte_U08);
 
 volatile static tB tick_B;
 
@@ -78,45 +95,86 @@ int main(void)
 	{
 
 		static tSelectState_E selectState_E = INIT_E;
+		static tB resetDone_B = FALSE;
 
 		if (tick_B == TRUE)
 		{
+			char text_pC[4];
 			Butt_update();
+
 			if (Butt_pressed_B(BUTT_RESET_E) == TRUE)
 			{
 				tU16 timePressed_U16 = Butt_getTickInState_U08(
 						BUTT_RESET_E) * TICK;
 				Ledc_set(LEDC_NONE_E);
+
 				if (timePressed_U16 < 1000)
 				{
-					Disp_write("4---");
-
+					text_pC[0] = '4';
+					text_pC[1] = '-';
+					text_pC[2] = '-';
+					text_pC[3] = '-';
 				}
 				else if (timePressed_U16 < 2000)
 				{
-					Disp_write("-3--");
+					text_pC[0] = '-';
+					text_pC[1] = '3';
+					text_pC[2] = '-';
+					text_pC[3] = '-';
 				}
 				else if (timePressed_U16 < 3000)
 				{
-					Disp_write("--2-");
+					text_pC[0] = '-';
+					text_pC[1] = '-';
+					text_pC[2] = '2';
+					text_pC[3] = '-';
 				}
 				else if (timePressed_U16 < 4000)
 				{
-					Disp_write("---1");
+					text_pC[0] = '-';
+					text_pC[1] = '-';
+					text_pC[2] = '-';
+					text_pC[3] = '1';
 				}
-				else if (timePressed_U16 >= 5000)
+				else if (timePressed_U16 >= 5000 && resetDone_B == FALSE)
 				{
-
+					resetDone_B = TRUE;
+					Coio_resetChip_B();
+					text_pC[0] = '-';
+					text_pC[1] = '-';
+					text_pC[2] = '-';
+					text_pC[3] = '-';
+				}
+				else
+				{
+					IO_SET(BUZZ_CFG);
+					text_pC[0] = '-';
+					text_pC[1] = '-';
+					text_pC[2] = '-';
+					text_pC[3] = '-';
 				}
 
 			}
 			else
 
 			{
-				if (Butt_pressedFlank_B(BUTT_SELECT_E) == TRUE
-						|| selectState_E == INIT_E)
+				IO_CLR(BUZZ_CFG);
+				resetDone_B = FALSE;
+				tCoio_ReadResult_E readResult_E;
+				if ((Butt_pressedFlank_B(BUTT_SELECT_E) == TRUE)
+						|| (selectState_E == INIT_E))
 				{
-					if (selectState_E >= EXT_FUSE_E)
+					readResult_E = Coio_readChip_E();
+
+					if (readResult_E == COIO_CONNECTION_FAIL_E)
+					{
+						selectState_E = ERR_CONNECTION_FAIL_E;
+					}
+					else if (readResult_E == COIO_UNKNOWN_DEVICE_E)
+					{
+						selectState_E = ERR_UNKNOWN_DEVICE_E;
+					}
+					else if (selectState_E >= EXT_FUSE_E)
 					{
 						selectState_E = DEVICE_E;
 					}
@@ -124,70 +182,80 @@ int main(void)
 					{
 						selectState_E++;
 					}
-					if (Coio_readChip_E() != COIO_OK_E)
-					{
-						selectState_E = ERR_E;
-					}
+
 					IO_SET(BUZZ_CFG);
 					_delay_ms(10);
 					IO_CLR(BUZZ_CFG);
-
 				}
+
 				switch (selectState_E)
 				{
 				case DEVICE_E:
 					Ledc_set(LEDC_DEVICE_E);
-					Disp_write("----");
+					Coio_getDeviceName_pC(text_pC);
 					break;
 				case LO_FUSE_E:
 					Ledc_set(LEDC_LO_FUSE_E);
-					Disp_write(byteToDispString_pC(Coio_getLowFuse_U08()));
+					byteToDispString_pC(text_pC, Coio_getLowFuse_U08());
 					break;
 				case HI_FUSE_E:
 					Ledc_set(LEDC_HI_FUSE_E);
-					Disp_write(byteToDispString_pC(Coio_getHighFuse_U08()));
+					byteToDispString_pC(text_pC, Coio_getHighFuse_U08());
 					break;
 				case EXT_FUSE_E:
 					Ledc_set(LEDC_EXT_FUSE_E);
-					Disp_write(byteToDispString_pC(Coio_getExtendedFuse_U08()));
+					byteToDispString_pC(text_pC, Coio_getExtendedFuse_U08());
 					break;
-				case ERR_E:
+				case ERR_CONNECTION_FAIL_E:
+					/* Connection fail. */
 					Ledc_set(LEDC_NONE_E);
-					Disp_write("E---");
+					text_pC[0] = 'E';
+					text_pC[1] = ' ';
+					text_pC[2] = ' ';
+					text_pC[3] = '1';
 					break;
+				case ERR_UNKNOWN_DEVICE_E:
+					/* Connection fail. */
+					Ledc_set(LEDC_NONE_E);
+					text_pC[0] = 'E';
+					text_pC[1] = ' ';
+					text_pC[2] = ' ';
+					text_pC[3] = '2';
+					break;
+
 				default:
-					Disp_write("E--8");
+					text_pC[0] = 'E';
+					text_pC[1] = ' ';
+					text_pC[2] = ' ';
+					text_pC[3] = '0';
 					break;
 				}
 
 			}
-
+			Disp_write(text_pC);
 			tick_B = FALSE;
 		}
 	}
 	return 0;
 }
 
-static char * byteToDispString_pC(tU08 byte_U08)
+static void byteToDispString_pC(char * text_pC, tU08 byte_U08)
 {
-	static char buff[4];
 	tU08 i_U08;
 
-	buff[0] = ' ';
-	buff[1] = ' ';
+	text_pC[0] = ' ';
+	text_pC[1] = ' ';
 
 	for (i_U08 = 0; i_U08 < 2; i_U08++)
 	{
 		if ((byte_U08 & 0xF) < 0xA)
 		{
-			buff[3 - i_U08] = (byte_U08 & 0xF) + 0x30;
+			text_pC[3 - i_U08] = (byte_U08 & 0xF) + 0x30;
 		}
 		else
 		{
-			buff[3 - i_U08] = (byte_U08 & 0xF) + 0x37;
+			text_pC[3 - i_U08] = (byte_U08 & 0xF) + 0x37;
 		}
 		byte_U08 = byte_U08 >> 4;
 	}
-
-	return buff;
 }

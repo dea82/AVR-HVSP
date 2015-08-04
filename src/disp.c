@@ -53,14 +53,10 @@
 #define DATA_HIGH() IO_SET(DISP_DATA_CFG)
 #define DATA_LOW()  IO_CLR(DISP_DATA_CFG)
 
-static void
-initMax7219(void);
-static void
-writeRegister(tU08 address_U08, tU08 data_U08);
-static void
-spiSend(tU08 data_U08);
-static void
-clear(void);
+static void initMax7219(void);
+static void writeRegister(tU08 address_U08, tU08 data_U08);
+static void spiSend(tU08 data_U08);
+static void clear(void);
 
 void Disp_init(void)
 {
@@ -121,7 +117,7 @@ void clear(void)
 	}
 }
 
-void Disp_write(char* text)
+void Disp_write(const char* text)
 {
 	tU08 i_U08;
 	for (i_U08 = 0; i_U08 < NOF_DIGITS; i_U08++)

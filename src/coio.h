@@ -17,8 +17,9 @@ typedef enum
 
 void Coio_init(void);
 tCoio_ReadResult_E Coio_readChip_E(void);
-
+void Coio_getDeviceName_pC(char * text_pC);
 tU08 Coio_getLowFuse_U08(void);
 tU08 Coio_getHighFuse_U08(void);
 tU08 Coio_getExtendedFuse_U08(void);
+tB Coio_resetChip_B(void);
 #endif /* COIO_H_ */

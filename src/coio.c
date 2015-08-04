@@ -44,7 +44,7 @@ typedef struct
 static const tTargetCpuInfo_str PROGMEM deviceDefault_astr[NOF_DEVICES] =
 {
 {	// ATtiny13
-		.name_aC = "T13 ", .signature_aU08 =
+		.name_aC = " T13", .signature_aU08 =
 		{ SIGNATURE_0, 0x90, 0x07 }, .fuseLowBits_U08 = 0x6A,
 				.fuseHighBits_U08 = 0xFF, .fuseExtendedBits_U08 = 0x00 },
 		{	// ATtiny24
@@ -76,7 +76,7 @@ static const tTargetCpuInfo_str PROGMEM deviceDefault_astr[NOF_DEVICES] =
 
 tTargetCpuInfo_str targetDevice_str =
 {
-{ '0', '0', '0', '0' },
+{' ', ' ', ' ', ' ' },
 { 0x00, 0x00, 0x00 }, 0x00, 0x00, 0x00 };
 
 static void enterHVSP(void);
@@ -91,6 +91,8 @@ static void writeFuseLowBits(tU08 code_U08);
 static void writeFuseHighBits(tU08 code_U08);
 static void writeFuseExtendedBits(tU08 code_U08);
 static void pollSDO(void);
+static const tTargetCpuInfo_str * findDevice_pstr(tU08 * signature_pU08);
+static tB updateSignatureName_B(tU08 * signature_pU08);
 
 void Coio_init(void)
 {
@@ -99,13 +101,15 @@ void Coio_init(void)
 tCoio_ReadResult_E Coio_readChip_E(void)
 {
 	tU08 byte_U08;
-	tCoio_ReadResult_E result_E = COIO_CONNECTION_FAIL_E;
+	tB deviceFound_B;
+	tCoio_ReadResult_E result_E;
 	enterHVSP();
 	for (byte_U08 = 0; byte_U08 < 3; byte_U08++)
 	{
 		targetDevice_str.signature_aU08[byte_U08] = getSignatureByte_U08(
 				byte_U08);
 	}
+	deviceFound_B = updateSignatureName_B(targetDevice_str.signature_aU08);
 	targetDevice_str.fuseLowBits_U08 = getLowFuse_U08();
 	targetDevice_str.fuseHighBits_U08 = getHighFuse_U08();
 	targetDevice_str.fuseExtendedBits_U08 = getExtendedFuse_U08();
@@ -113,7 +117,18 @@ tCoio_ReadResult_E Coio_readChip_E(void)
 
 	if (targetDevice_str.signature_aU08[0] == SIGNATURE_0)
 	{
-		result_E = COIO_OK_E;
+		if (deviceFound_B == TRUE)
+		{
+			result_E = COIO_OK_E;
+		}
+		else
+		{
+			result_E = COIO_UNKNOWN_DEVICE_E;
+		}
+	}
+	else
+	{
+		result_E = COIO_CONNECTION_FAIL_E;
 	}
 
 	return result_E;
@@ -121,53 +136,36 @@ tCoio_ReadResult_E Coio_readChip_E(void)
 
 tB Coio_resetChip_B(void)
 {
+	const tTargetCpuInfo_str * target_pstr = findDevice_pstr(
+			targetDevice_str.signature_aU08);
 	tB fuseRestoreSuccessful_B = TRUE;
-	tU08 device_U08;
 
-	for (device_U08 = 0; device_U08 < NOF_DEVICES; device_U08++)
+	/* get default fuse bits for selected target */
+	uint8_t fuseLowBits = pgm_read_byte(&target_pstr->fuseLowBits_U08);
+	uint8_t fuseHighBits = pgm_read_byte(&target_pstr->fuseHighBits_U08);
+	uint8_t fuseExtendedBits = pgm_read_byte(
+			&target_pstr->fuseExtendedBits_U08);
+	enterHVSP();
+	/* write default fuse bits */
+	writeFuseLowBits(fuseLowBits);
+	writeFuseHighBits(fuseHighBits);
+	if (fuseExtendedBits != 0)
 	{
-		if ((targetDevice_str.signature_aU08[0]
-				== pgm_read_byte(
-						&deviceDefault_astr[device_U08].signature_aU08[0]))
-				&& (targetDevice_str.signature_aU08[1]
-						== pgm_read_byte(
-								&deviceDefault_astr[device_U08].signature_aU08[1]))
-				&& (targetDevice_str.signature_aU08[2]
-						== pgm_read_byte(
-								&deviceDefault_astr[device_U08].signature_aU08[2])))
-		{
-			/* get default fuse bits for selected target */
-			uint8_t fuseLowBits = pgm_read_byte(
-					&deviceDefault_astr[device_U08].fuseLowBits_U08);
-			uint8_t fuseHighBits = pgm_read_byte(
-					&deviceDefault_astr[device_U08].fuseHighBits_U08);
-			uint8_t fuseExtendedBits = pgm_read_byte(
-					&deviceDefault_astr[device_U08].fuseExtendedBits_U08);
-
-			/* write default fuse bits */
-			writeFuseLowBits(fuseLowBits);
-			writeFuseHighBits(fuseHighBits);
-			if (fuseExtendedBits != 0)
-			{
-				writeFuseExtendedBits(fuseExtendedBits);
-			}
-
-			/* verify */
-			if ((fuseLowBits == getLowFuse_U08())
-					&& (fuseHighBits == getHighFuse_U08())
-					&& ((0 == fuseExtendedBits)
-							|| (fuseExtendedBits == getExtendedFuse_U08())))
-			{
-				fuseRestoreSuccessful_B = TRUE;
-			}
-			else
-			{
-				fuseRestoreSuccessful_B = FALSE;
-			}
-			break;
-		}
+		writeFuseExtendedBits(fuseExtendedBits);
 	}
 
+	/* verify */
+	if ((fuseLowBits == getLowFuse_U08()) && (fuseHighBits == getHighFuse_U08())
+			&& ((0 == fuseExtendedBits)
+					|| (fuseExtendedBits == getExtendedFuse_U08())))
+	{
+		fuseRestoreSuccessful_B = TRUE;
+	}
+	else
+	{
+		fuseRestoreSuccessful_B = FALSE;
+	}
+	exitHVSP();
 	return fuseRestoreSuccessful_B;
 }
 
@@ -361,27 +359,28 @@ static void pollSDO(void)
 	}
 }
 
-char * Coio_getSignature_pC(void)
+static tB updateSignatureName_B(tU08 * signature_pU08)
 {
-	char * signature_pC;
-	tU08 device_U08;
+	tB ret_B = FALSE;
+	const tTargetCpuInfo_str * target_pstr = findDevice_pstr(signature_pU08);
 
-	for (device_U08 = 0; device_U08 < NOF_DEVICES; device_U08++)
+	if (target_pstr != 0)
 	{
-		if ((targetDevice_str.signature_aU08[0]
-				== pgm_read_byte(
-						&deviceDefault_astr[device_U08].signature_aU08[0]))
-				&& (targetDevice_str.signature_aU08[1]
-						== pgm_read_byte(
-								&deviceDefault_astr[device_U08].signature_aU08[1]))
-				&& (targetDevice_str.signature_aU08[2]
-						== pgm_read_byte(
-								&deviceDefault_astr[device_U08].signature_aU08[2])))
-		{
-			signature_pC = 0;
-		}
+		memcpy_P(&targetDevice_str.name_aC, &target_pstr->name_aC,
+				sizeof(targetDevice_str.name_aC));
+
+		ret_B = TRUE;
 	}
-	return signature_pC;
+	return ret_B;
+}
+
+void Coio_getDeviceName_pC(char text_pC[])
+{
+	tU08 i_U08;
+	for (i_U08 = 0; i_U08 < 4; i_U08++)
+	{
+		text_pC[i_U08] = targetDevice_str.name_aC[i_U08];
+	}
 }
 
 tU08 Coio_getLowFuse_U08(void)
@@ -397,4 +396,28 @@ tU08 Coio_getHighFuse_U08(void)
 tU08 Coio_getExtendedFuse_U08(void)
 {
 	return targetDevice_str.fuseExtendedBits_U08;
+}
+
+static const tTargetCpuInfo_str * findDevice_pstr(tU08 * signature_pU08)
+{
+	const tTargetCpuInfo_str * device_pstr = 0;
+
+	tU08 device_U08;
+
+	for (device_U08 = 0; device_U08 < NOF_DEVICES; device_U08++)
+	{
+		if ((signature_pU08[0]
+				== pgm_read_byte(
+						&deviceDefault_astr[device_U08].signature_aU08[0]))
+				&& (signature_pU08[1]
+						== pgm_read_byte(
+								&deviceDefault_astr[device_U08].signature_aU08[1]))
+				&& (signature_pU08[2]
+						== pgm_read_byte(
+								&deviceDefault_astr[device_U08].signature_aU08[2])))
+		{
+			device_pstr = &deviceDefault_astr[device_U08];
+		}
+	}
+	return device_pstr;
 }
