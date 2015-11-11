@@ -34,25 +34,25 @@
 # Output Directory name
 # Use OUTDIR= .
 # for current directory
-OUTDIR = .
+OUTDIR = output
 
 
 # MCU name
-MCU = atmega32
+MCU = attiny2313
 
 # CPU clock
-F_CPU = 16000000
+F_CPU = 8000000
 
 # Output format. (can be srec, ihex, binary)
 FORMAT = ihex
 
 # Target file name (without extension).
-TARGET = ExposureBox
+TARGET = AVR-HVSP
 
 ## A directory for common include files and the simple USART library.
 ## If you move either the current folder or the Library folder, you'll 
 ##  need to change this path to match.
-LIBDIR = src-gen
+LIBDIR = 
 
 
 # List C source files here. (C dependencies are automatically generated.)
