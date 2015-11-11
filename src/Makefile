@@ -171,7 +171,6 @@ LDFLAGS += $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB)
 
 
 
-
 # Programming support using avrdude. Settings and variables.
 
 # Programming hardware: alf avr910 avrisp bascom bsd
