@@ -24930,7 +24930,7 @@ Source: http://products.nichicon.co.jp/en/pdf/XJA043/e-ud.pdf</description>
 <part name="GND5" library="supply1" deviceset="GND" device=""/>
 <part name="C3" library="resistor" deviceset="C-EU" device="C0805" value="100n"/>
 <part name="C4" library="resistor" deviceset="C-EU" device="C0805" value="100n"/>
-<part name="C5" library="resistor" deviceset="CPOL-EU" device="153CLV-0405"/>
+<part name="C5" library="resistor" deviceset="CPOL-EU" device="153CLV-0405" value="10uF"/>
 <part name="GND6" library="supply1" deviceset="GND" device=""/>
 <part name="R3" library="resistor" deviceset="R-EU_" device="R0805" value="4k7"/>
 <part name="GND7" library="supply1" deviceset="GND" device=""/>

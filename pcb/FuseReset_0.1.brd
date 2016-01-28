@@ -3061,7 +3061,7 @@ design rules under a new name.</description>
 </element>
 <element name="C3" library="resistor" package="C0805" value="100n" x="68.834" y="35.4838" rot="MR0"/>
 <element name="C4" library="resistor" package="C0805" value="100n" x="43.7134" y="28.4226" rot="MR180"/>
-<element name="C5" library="resistor" package="153CLV-0405" value="" x="39.5986" y="27.2288" rot="MR270"/>
+<element name="C5" library="resistor" package="153CLV-0405" value="10uF" x="39.5986" y="27.2288" rot="MR270"/>
 <element name="R3" library="resistor" package="R0805" value="4k7" x="91.4392" y="25.0382" rot="R90"/>
 <element name="R4" library="resistor" package="R0805" value="4k7" x="84.9314" y="24.8074" rot="R270"/>
 <element name="SG1" library="buzzer" package="F/TMB" value="F/TMB" x="59.8996" y="44.0778" rot="MR270">
