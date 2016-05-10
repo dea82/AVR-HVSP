@@ -50,13 +50,13 @@ FORMAT = ihex
 TARGET = AVR-HVSP
 
 ## A directory for common include files and the simple USART library.
-## If you move either the current folder or the Library folder, you'll 
+## If you move either the current folder or the Library folder, you'll
 ##  need to change this path to match.
-LIBDIR = 
+LIBDIR =
 
 
 # List C source files here. (C dependencies are automatically generated.)
-#SRC = $(TARGET).c 
+#SRC = $(TARGET).c
 SRC=$(wildcard *.c $(LIBDIR)/*.c)
 
 
@@ -101,73 +101,24 @@ CDEFS = -DF_CPU=$(F_CPU)
 CINCS =
 
 
-# Compiler flags.
-#  -g*:          generate debugging information
-#  -O*:          optimization level
-#  -f...:        tuning, see GCC manual and avr-libc documentation
-#  -Wall...:     warning level
-#  -Wa,...:      tell GCC to pass this to the assembler.
-#    -adhlns...: create assembler listing
-CFLAGS = -g$(DEBUG)
-CFLAGS += $(CDEFS) $(CINCS)
+CFLAGS = $(CDEFS)
 CFLAGS += -O$(OPT)
-CFLAGS += -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
-CFLAGS += -Wall -Wstrict-prototypes
-CFLAGS += -Wa,-adhlns=$(<:%.c=$(OUTDIR)/%.lst)
-CFLAGS += $(patsubst %,-I%,$(EXTRAINCDIRS))
 CFLAGS += $(CSTANDARD)
+CFLAGS += -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
+# Put data and functions in separate sections - not linked if not used
+CFLAGS += -fdata-sections -ffunction-sections
+CFLAGS += -Wall -Wstrict-prototypes
+# Link time optimization - more straight instruction and not so many jumps.
+CFLAGS += -flto
 
 
-# Assembler flags.
-#  -Wa,...:   tell GCC to pass this to the assembler.
-#  -ahlms:    create listing
-#  -gstabs:   have the assembler create line number information; note that
-#             for use in COFF files, additional information about filenames
-#             and function names needs to be present in the assembler source
-#             files -- see avr-libc docs [FIXME: not yet described there]
-ASFLAGS = -Wa,-adhlns=$(<:%.S=$(OUTDIR)/%.lst),-gstabs
+ASFLAGS = -DF_CPU=$(F_CPU)
+ASFLAGS += -fdata-sections -ffunction-sections -flto
 
-
-
-#Additional libraries.
-
-# Minimalistic printf version
-PRINTF_LIB_MIN = -Wl,-u,vfprintf -lprintf_min
-
-# Floating point printf version (requires MATH_LIB = -lm below)
-PRINTF_LIB_FLOAT = -Wl,-u,vfprintf -lprintf_flt
-
-PRINTF_LIB =
-
-# Minimalistic scanf version
-SCANF_LIB_MIN = -Wl,-u,vfscanf -lscanf_min
-
-# Floating point + %[ scanf version (requires MATH_LIB = -lm below)
-SCANF_LIB_FLOAT = -Wl,-u,vfscanf -lscanf_flt
-
-SCANF_LIB =
-
-MATH_LIB = -lm
-
-# External memory options
-
-# 64 KB of external RAM, starting after internal RAM (ATmega128!),
-# used for variables (.data/.bss) and heap (malloc()).
-#EXTMEMOPTS = -Wl,-Tdata=0x801100,--defsym=__heap_end=0x80ffff
-
-# 64 KB of external RAM, starting after internal RAM (ATmega128!),
-# only used for heap (malloc()).
-#EXTMEMOPTS = -Wl,--defsym=__heap_start=0x801100,--defsym=__heap_end=0x80ffff
-
-EXTMEMOPTS =
-
-# Linker flags.
-#  -Wl,...:     tell GCC to pass this to linker.
-#    -Map:      create map file
-#    --cref:    add cross reference to  map file
-LDFLAGS = -Wl,-Map=$(OUTDIR)/$(TARGET).map,--cref
-LDFLAGS += $(EXTMEMOPTS)
-LDFLAGS += $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB)
+LDFLAGS = -Wl,-gc-sections # Do not link unused function sections
+LDFLAGS += -Wl,--relax
+LDFLAGS += -flto
+#LDFLAGS += -nostartfiles
 
 
 
@@ -323,7 +274,7 @@ createdir:
 
 # Program the device.
 program: $(OUTDIR)/$(TARGET).hex $(OUTDIR)/$(TARGET).eep
-	$(AVRDUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_WRITE_FLASH) 
+	$(AVRDUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_WRITE_FLASH)
 $(AVRDUDE_WRITE_EEPROM)
 
 
